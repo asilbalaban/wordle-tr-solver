@@ -1,61 +1,183 @@
+/*
+ *	Kolay Çözüm 
+ *	s = document.querySelectorAll('game-app')[0].shadowRoot.querySelectorAll('game-keyboard')[0].shadowRoot; JSON.parse(localStorage.getItem("gameState")).solution.split('').map(l => {s.querySelectorAll('button[data-key="'+l+'"]')[0].click();});s.querySelectorAll('button[data-key]')[19].click(); 
+*/
 
-function check_board() {
-	// hiç kelime girilmiş mi?
-		// evet
-			// o zaman filtreleri çalıştır
-		// hayır
-			// ilk kelime olarak kitap tahmininde bulun
-			make_guess('kitap');
-}
+import dict from "./dict.js";
 
-function make_guess(word) {
-	letters = word.split("");
-	window.key[letters[0]].click();
-	window.key[letters[1]].click();
-	window.key[letters[2]].click();
-	window.key[letters[3]].click();
-	window.key[letters[4]].click();
-	window.key['enter'].click();
-}
+const parseResults = () => {
+  const gameApp = document.querySelector("game-app");
+  const gameRows = gameApp.shadowRoot.querySelectorAll("game-row");
 
-check_board();
+  let contains = [];
+  let doesntContain = [];
+  let position = [];
 
+  gameRows.forEach((gameRow) => {
+    const gameTiles = gameRow.shadowRoot.querySelectorAll("game-tile");
+    gameTiles.forEach((gameTile, i) => {
+      const letter = gameTile.getAttribute("letter");
+      switch (gameTile.getAttribute("evaluation")) {
+        case "absent":
+          doesntContain.push(letter);
+          break;
+        case "correct":
+          position.push(`${i}:${letter}`);
+          break;
+        case "present":
+          contains.push(`${i}:${letter}`);
+          break;
+      }
+    });
+  });
 
+  doesntContain = doesntContain
+    .filter((l) => contains.map((l2) => l2.split(":")[1]).indexOf(l) == -1)
+    .filter((l) => position.map((l2) => l2.split(":")[1]).indexOf(l) == -1);
 
-window.game = document.querySelector("game-app").shadowRoot.querySelector("#game");
-window.board = game.children;
-window.keyboard = game.children[2].shadowRoot.querySelector("#keyboard");
+  return [contains, doesntContain, position];
+};
 
-window.key = {
-	e: window.keyboard.children[0].children[0],
-	r: window.keyboard.children[0].children[1],
-	t: window.keyboard.children[0].children[2],
-	y: window.keyboard.children[0].children[3],
-	u: window.keyboard.children[0].children[4],
-	ı: window.keyboard.children[0].children[5],
-	o: window.keyboard.children[0].children[6],
-	p: window.keyboard.children[0].children[7],
-	ğ: window.keyboard.children[0].children[8],
-	ü: window.keyboard.children[0].children[9],
-	a: window.keyboard.children[1].children[1],
-	s: window.keyboard.children[1].children[2],
-	d: window.keyboard.children[1].children[3],
-	f: window.keyboard.children[1].children[4],
-	g: window.keyboard.children[1].children[5],
-	h: window.keyboard.children[1].children[6],
-	j: window.keyboard.children[1].children[7],
-	k: window.keyboard.children[1].children[8],
-	l: window.keyboard.children[1].children[9],
-	ş: window.keyboard.children[1].children[10],
-	i: window.keyboard.children[1].children[11],
-	enter: window.keyboard.children[2].children[0],
-	z: window.keyboard.children[2].children[1],
-	c: window.keyboard.children[2].children[2],
-	v: window.keyboard.children[2].children[3],
-	b: window.keyboard.children[2].children[4],
-	n: window.keyboard.children[2].children[5],
-	m: window.keyboard.children[2].children[6],
-	ö: window.keyboard.children[2].children[7],
-	ç: window.keyboard.children[2].children[8],
-	backspace: window.keyboard.children[2].children[9]
-}
+const isCorrect = () => {
+  const gameApp = document.querySelector("game-app");
+  const gameRows = Array.from(
+    gameApp.shadowRoot.querySelectorAll("game-row")
+  ).filter((dr) => dr.getAttribute("letters"));
+  const lastGameRow = gameRows[gameRows.length - 1];
+
+  const gameTiles = lastGameRow.shadowRoot.querySelectorAll("game-tile");
+  return !Array.from(gameTiles).find((gameTile, i) => {
+    const letter = gameTile.getAttribute("letter");
+    return gameTile.getAttribute("evaluation") != "correct";
+  });
+};
+
+const wordNotAccepted = () => {
+  const gameApp = document.querySelector("game-app");
+  const gameRows = Array.from(
+    gameApp.shadowRoot.querySelectorAll("game-row")
+  ).filter((dr) => dr.getAttribute("letters"));
+  const lastGameRow = gameRows[gameRows.length - 1];
+
+  const gameTiles = lastGameRow.shadowRoot.querySelectorAll("game-tile");
+  return !Array.from(gameTiles).find((gameTile, i) => {
+    const letter = gameTile.getAttribute("letter");
+    return !!gameTile.getAttribute("evaluation");
+  });
+};
+
+const clearTyped = () => {
+  const gameApp = document.querySelector("game-app");
+  const gameKeyboard = gameApp.shadowRoot.querySelector("game-keyboard");
+  const backspace = gameKeyboard.shadowRoot.querySelector(
+    'button[data-key="←"]'
+  );
+
+  backspace.click();
+  backspace.click();
+  backspace.click();
+  backspace.click();
+  backspace.click();
+};
+
+const type = (str) => {
+  const gameApp = document.querySelector("game-app");
+  const gameKeyboard = gameApp.shadowRoot.querySelector("game-keyboard");
+  Array.from(str).forEach((l) =>
+    gameKeyboard.shadowRoot.querySelector(`button[data-key="${l}"]`).click()
+  );
+
+  gameKeyboard.shadowRoot.querySelector(`button[data-key="↵"]`).click();
+};
+
+const shuffle = (array) => {
+  let currentIndex = array.length,
+    randomIndex;
+
+  // While there remain elements to shuffle...
+  while (currentIndex != 0) {
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+
+    // And swap it with the current element.
+    [array[currentIndex], array[randomIndex]] = [
+      array[randomIndex],
+      array[currentIndex],
+    ];
+  }
+
+  return array;
+};
+
+const search = (str, search) =>
+  Array.from(str)
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => l === search)
+    .map(({ i }) => i);
+
+const getNextGuess = (contains, doesntContain, positions) => {
+  let filter = [...dict];
+  console.log("Total 5 letter words: " + filter.length);
+
+  console.log("Using contains filter: ", contains);
+  contains = contains && contains.map((p) => p.split(":"));
+  if (contains) {
+    filter = filter.filter(
+      (w) =>
+        contains.filter(([p, c]) => {
+          const found = search(w, c);
+          return found.length && found.filter((v) => v == p).length == 0;
+        }).length == contains.length
+    );
+  }
+  console.log("After contains filter: " + filter.length);
+
+  console.log("Using doesntContain filter: ", doesntContain);
+  if (doesntContain) {
+    filter = filter.filter(
+      (w) =>
+        doesntContain.filter((c) => w.indexOf(c) == -1).length ==
+        doesntContain.length
+    );
+  }
+  console.log("After doesntContain filter: " + filter.length);
+
+  console.log("Using positions filter: ", positions);
+  positions = positions && positions.map((p) => p.split(":"));
+  if (positions) {
+    filter = filter.filter(
+      (w) =>
+        positions.filter(([p, c]) => search(w, c).indexOf(+p) > -1).length ===
+        positions.length
+    );
+  }
+  console.log("After positions filter: " + filter.length);
+
+  if (filter.length < 5000) {
+    filter = shuffle(filter);
+  }
+
+  return filter.length && filter[0];
+};
+
+const scheduleNextGuess = () => {
+  setTimeout(() => {
+    if (!isCorrect()) {
+      console.log("Incorrect!");
+      const nextGuess = getNextGuess(...parseResults());
+      console.log(`Guessing ${nextGuess}`);
+      if (nextGuess) {
+        type(nextGuess);
+        scheduleNextGuess();
+      }
+    }
+
+    if (wordNotAccepted()) {
+      clearTyped();
+    }
+  }, 2000);
+};
+
+type("woman");
+scheduleNextGuess();
